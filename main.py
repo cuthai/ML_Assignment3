@@ -1,7 +1,5 @@
 from utils.args import args
 from etl.etl import ETL
-from knn.knn_classifier import KNNClassifier
-from knn.knn_regressor import KNNRegressor
 
 
 def main():
