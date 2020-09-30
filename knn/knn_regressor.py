@@ -21,7 +21,7 @@ class KNNRegressor:
         # Set the attributes to hold our data
         self.etl = etl
         self.data_name = self.etl.data_name
-        self.data_split = etl.data_split
+        self.data_split = etl.test_split
 
         # Type of KNN, default to regular
         self.knn_type = 'regular'

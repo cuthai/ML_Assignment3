@@ -27,7 +27,9 @@ class ETL:
         # Set the attributes to hold our data
         self.data = None
         self.transformed_data = None
-        self.data_split = {}
+        self.tune_data = None
+        self.test_split = {}
+        self.train_split = {}
 
         # Meta attributes
         self.data_name = data_name
@@ -46,6 +48,8 @@ class ETL:
             self.cv_split_regression()
         else:
             self.cv_split_classification()
+
+        self.cv_combine()
 
     def extract(self):
         """
@@ -240,7 +244,7 @@ class ETL:
             and the data is sorted over the class and random number. The index of the data is then mod by 5 and each
             remainder represents a set for cv splitting.
 
-        :return self.data_split: dict (of DataFrames), dictionary with keys (tune, 0, 1, 2, 3, 4) referring to the
+        :return self.test_split: dict (of DataFrames), dictionary with keys (tune, 0, 1, 2, 3, 4) referring to the
             split transformed data
         """
         # Define base data size and size of tune
@@ -257,9 +261,7 @@ class ETL:
         # Randomize a number between 0 and 10 and multiply by the index to randomly pick observations over data set
         for index in range(tune_size):
             tune_splitter.append(np.random.choice(a=10) + (10 * index))
-        self.data_split.update({
-            'tune': self.transformed_data.iloc[tune_splitter]
-        })
+        self.tune_data = self.transformed_data.iloc[tune_splitter]
 
         # Determine the remaining index that weren't picked for tune
         remainder = list(set(self.transformed_data.index) - set(tune_splitter))
@@ -278,7 +280,7 @@ class ETL:
             splitter = remainder_df.loc[remainder_df.index % 5 == index]['index']
 
             # Update our attribute with the dictionary for this index
-            self.data_split.update({
+            self.test_split.update({
                 index: self.transformed_data.iloc[splitter]
             })
 
@@ -288,7 +290,7 @@ class ETL:
 
         First this function splits out a tune set. The remainder is sampled 5 times to produce 5 cv splits.
 
-        :return self.data_split: dict (of DataFrames), dictionary with keys (tune, 0, 1, 2, 3, 4) referring to the
+        :return self.test_split: dict (of DataFrames), dictionary with keys (tune, 0, 1, 2, 3, 4) referring to the
             split transformed data
         """
         # Define base data size and size of tune and splits
@@ -305,9 +307,7 @@ class ETL:
 
         # Sample for tune
         tune_splitter = np.random.choice(a=data_size, size=tune_size, replace=False)
-        self.data_split.update({
-            'tune': self.transformed_data.iloc[tune_splitter]
-        })
+        self.tune_data = self.transformed_data.iloc[tune_splitter]
 
         # Determine the remaining index that weren't picked for tune
         remainder = list(set(self.transformed_data.index) - set(tune_splitter))
@@ -327,6 +327,26 @@ class ETL:
             remainder = list(set(remainder) - set(splitter))
 
             # Update our attribute with the dictionary for this index
-            self.data_split.update({
+            self.test_split.update({
                 index: self.transformed_data.iloc[splitter]
             })
+
+    def cv_combine(self):
+        """
+        Fit function
+
+        This function doesn't actually do any fitting, it just specifies the train data for each CV split index. This
+            combines the CV splits for each index. Ex: for split 0 CV 1-4 are combined and train_data 0 is set to CV 1-4
+        """
+        # Loop through index
+        for index in range(5):
+            # Remove the current index from the train_index
+            train_index = [train_index for train_index in [0, 1, 2, 3, 4] if train_index != index]
+            train_data = pd.DataFrame()
+
+            # For index in our train_index, append to the Data Frame
+            for data_split_index in train_index:
+                train_data = train_data.append(self.test_split[data_split_index])
+
+            # Update train data with the combined CV
+            self.train_split.update({index: train_data})
