@@ -35,7 +35,8 @@ class ETL:
         self.data_name = data_name
         self.random_state = random_state
         self.classes = 0
-        self.problem_type = None
+        self.class_names = None
+        self.feature_names = None
 
         # Extract
         self.extract()
@@ -155,6 +156,28 @@ class ETL:
         self.classes = 2
         self.transformed_data = temp_df
 
+        # Class and Feature names
+        self.class_names = temp_df['Class'].unique().tolist()
+        self.feature_names = {feature_name: 'numerical' for feature_name in temp_df.keys()[:-1]}
+
+    def transform_car(self):
+        """
+        Function to transform car data set
+
+        :return self.transformed_data: DataFrame, transformed data set
+        :return self.classes: int, num of classes
+        """
+        # We'll make a deep copy of our data set
+        temp_df = pd.DataFrame.copy(self.data, deep=True)
+
+        # Set attributes for ETL object, there are two total classes so this is a singular classifier
+        self.classes = 4
+        self.transformed_data = temp_df
+
+        # Class and Feature names
+        self.class_names = temp_df['Class'].unique().tolist()
+        self.feature_names = {feature_name: 'categorical' for feature_name in temp_df.keys()[:-1]}
+
     def transform_segmentation(self):
         """
         Function to transform segmentation data set
@@ -170,23 +193,17 @@ class ETL:
         # Region pixel count is always 9 and is not useful for our algorithms
         temp_df.drop(columns='Region_Pixel_Count', inplace=True)
 
+        # Let's reorder the class column to the back
+        reordered_temp_df = temp_df.drop(columns='Class')
+        reordered_temp_df['Class'] = temp_df['Class']
+
         # Set attributes for ETL object, there are two total classes so this is a singular classifier
         self.classes = 7
-        self.transformed_data = temp_df
+        self.transformed_data = reordered_temp_df
 
-    def transform_car(self):
-        """
-        Function to transform car data set
-
-        :return self.transformed_data: DataFrame, transformed data set
-        :return self.classes: int, num of classes
-        """
-        # We'll make a deep copy of our data set
-        temp_df = pd.DataFrame.copy(self.data, deep=True)
-
-        # Set attributes for ETL object, there are two total classes so this is a singular classifier
-        self.classes = 4
-        self.transformed_data = temp_df
+        # Class and Feature names
+        self.class_names = reordered_temp_df['Class'].unique().tolist()
+        self.feature_names = {feature_name: 'numerical' for feature_name in reordered_temp_df.keys()[:-1]}
 
     def transform_abalone(self):
         """
@@ -203,6 +220,10 @@ class ETL:
         # Set attributes for ETL object, there are two total classes so this is a singular classifier
         self.transformed_data = temp_df
 
+        # Feature names
+        self.feature_names = {feature_name: 'numerical' for feature_name in temp_df.keys()[:-1]}
+        self.feature_names.update({'Sex': 'categorical'})
+
     def transform_machine(self):
         """
         Function to transform machine data set
@@ -216,10 +237,14 @@ class ETL:
         temp_df = pd.DataFrame.copy(self.data, deep=True)
 
         # We'll remove unneeded variables as well as denormalize the target
-        temp_df.drop(columns=['Vendor', 'Model_Name', 'ERP'], inplace=True)
+        temp_df.drop(columns=['Model_Name', 'ERP'], inplace=True)
 
         # Set attributes for ETL object, there are two total classes so this is a singular classifier
         self.transformed_data = temp_df
+
+        # Feature names
+        self.feature_names = {feature_name: 'numerical' for feature_name in temp_df.keys()[:-1]}
+        self.feature_names.update({'Vendor': 'categorical'})
 
     def transform_forest_fires(self):
         """
@@ -235,6 +260,10 @@ class ETL:
 
         # Set attributes for ETL object, there are two total classes so this is a singular classifier
         self.transformed_data = temp_df
+
+        # Feature names
+        self.feature_names = {feature_name: 'numerical' for feature_name in temp_df.keys()[:-1]}
+        self.feature_names.update({'month': 'categorical', 'day': 'categorical'})
 
     def cv_split_classification(self):
         """
