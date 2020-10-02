@@ -1,5 +1,6 @@
 import math
 import copy
+import numpy as np
 
 
 class ID3Classifier:
@@ -75,10 +76,11 @@ class ID3Classifier:
             else:
                 partitions = []
                 for class_name in self.class_names:
-                    partitions.append((train_data.loc[train_data['Class'] == class_name][feature_name].max() +
-                                      train_data.loc[train_data['Class'] != class_name][feature_name].min()) / 2)
-                    partitions.append((train_data.loc[train_data['Class'] == class_name][feature_name].min() +
-                                       train_data.loc[train_data['Class'] != class_name][feature_name].max()) / 2)
+                    if len(train_data.loc[train_data['Class'] == class_name]) > 0:
+                        partitions.append((train_data.loc[train_data['Class'] == class_name][feature_name].max() +
+                                          train_data.loc[train_data['Class'] != class_name][feature_name].min()) / 2)
+                        partitions.append((train_data.loc[train_data['Class'] == class_name][feature_name].min() +
+                                           train_data.loc[train_data['Class'] != class_name][feature_name].max()) / 2)
 
                 partitions = set(partitions)
 
