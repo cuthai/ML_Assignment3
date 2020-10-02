@@ -14,6 +14,9 @@ class ID3Classifier:
         self.class_names = etl.class_names
         self.feature_names = etl.feature_names
 
+        # Train Results
+        self.train_models = {}
+
         # Tune Results
         self.tune_results = {}
         self.k = 1
@@ -31,7 +34,7 @@ class ID3Classifier:
             initial_features = list(self.feature_names.keys())
             tree = self.branch(train_data, initial_features)
 
-            pass
+            self.train_models.update({train_index: tree})
 
     def branch(self, train_data, feature_names):
         feature_names = copy.deepcopy(feature_names)
@@ -55,56 +58,14 @@ class ID3Classifier:
         max_partition = None
 
         for feature_name in feature_names:
-            expectation = 0
             chosen_partition = None
 
             if self.feature_names[feature_name] == 'categorical':
                 expectation = self.calculate_expectation_categorical(train_data=train_data, feature_name=feature_name)
 
             else:
-                partitions = []
-                for class_name in self.class_names:
-                    if len(train_data.loc[train_data['Class'] == class_name]) > 0:
-                        partitions.append((train_data.loc[train_data['Class'] == class_name][feature_name].max() +
-                                           train_data.loc[train_data['Class'] != class_name][feature_name].min()) / 2)
-                        partitions.append((train_data.loc[train_data['Class'] == class_name][feature_name].min() +
-                                           train_data.loc[train_data['Class'] != class_name][feature_name].max()) / 2)
-
-                partitions = set(partitions)
-
-                for partition in partitions:
-                    partition_expectation = 0
-                    lower_partition_count = len(train_data.loc[train_data[feature_name] <= partition])
-                    upper_partition_count = len(train_data.loc[train_data[feature_name] > partition])
-                    lower_partition_entropy = 0
-                    upper_partition_entropy = 0
-
-                    for class_name in self.class_names:
-                        lower_partition_class_count = len(train_data.loc[(train_data[feature_name] <= partition) &
-                                                                         (train_data['Class'] == class_name)])
-
-                        upper_partition_class_count = len(train_data.loc[(train_data[feature_name] > partition) &
-                                                                         (train_data['Class'] == class_name)])
-
-                        if lower_partition_class_count != 0:
-                            lower_partition_entropy += - (lower_partition_class_count / lower_partition_count) * \
-                                                       math.log((lower_partition_class_count / lower_partition_count),
-                                                                2)
-
-                        if upper_partition_class_count != 0:
-                            upper_partition_entropy += - (upper_partition_class_count / upper_partition_count) * \
-                                                       math.log((upper_partition_class_count / upper_partition_count),
-                                                                2)
-
-                    partition_expectation += (lower_partition_count / normalizer) * lower_partition_entropy
-                    partition_expectation += (upper_partition_count / normalizer) * upper_partition_entropy
-
-                    if partition_expectation < expectation:
-                        chosen_partition = partition
-                        expectation = partition_expectation
-                    elif expectation == 0:
-                        chosen_partition = partition
-                        expectation = partition_expectation
+                expectation, chosen_partition = self.calculate_expectation_numerical(train_data=train_data,
+                                                                                     feature_name=feature_name)
 
             gain = entropy - expectation
 
@@ -161,3 +122,54 @@ class ID3Classifier:
             expectation += (partition_count / normalizer) * partition_entropy
 
         return expectation
+
+    def calculate_expectation_numerical(self, train_data, feature_name):
+        normalizer = len(train_data)
+        expectation = 0
+        chosen_partition = None
+
+        partitions = []
+        for class_name in self.class_names:
+            if len(train_data.loc[train_data['Class'] == class_name]) > 0:
+                partitions.append((train_data.loc[train_data['Class'] == class_name][feature_name].max() +
+                                   train_data.loc[train_data['Class'] != class_name][feature_name].min()) / 2)
+                partitions.append((train_data.loc[train_data['Class'] == class_name][feature_name].min() +
+                                   train_data.loc[train_data['Class'] != class_name][feature_name].max()) / 2)
+
+        partitions = set(partitions)
+
+        for partition in partitions:
+            partition_expectation = 0
+            lower_partition_count = len(train_data.loc[train_data[feature_name] <= partition])
+            upper_partition_count = len(train_data.loc[train_data[feature_name] > partition])
+            lower_partition_entropy = 0
+            upper_partition_entropy = 0
+
+            for class_name in self.class_names:
+                lower_partition_class_count = len(train_data.loc[(train_data[feature_name] <= partition) &
+                                                                 (train_data['Class'] == class_name)])
+
+                upper_partition_class_count = len(train_data.loc[(train_data[feature_name] > partition) &
+                                                                 (train_data['Class'] == class_name)])
+
+                if lower_partition_class_count != 0:
+                    lower_partition_entropy += - (lower_partition_class_count / lower_partition_count) * \
+                                               math.log((lower_partition_class_count / lower_partition_count),
+                                                        2)
+
+                if upper_partition_class_count != 0:
+                    upper_partition_entropy += - (upper_partition_class_count / upper_partition_count) * \
+                                               math.log((upper_partition_class_count / upper_partition_count),
+                                                        2)
+
+            partition_expectation += (lower_partition_count / normalizer) * lower_partition_entropy
+            partition_expectation += (upper_partition_count / normalizer) * upper_partition_entropy
+
+            if partition_expectation < expectation:
+                chosen_partition = partition
+                expectation = partition_expectation
+            elif expectation == 0:
+                chosen_partition = partition
+                expectation = partition_expectation
+
+        return expectation, chosen_partition
