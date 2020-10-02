@@ -144,6 +144,7 @@ class ETL:
         """
         # Remove missing data points
         self.data = self.data.loc[self.data['Bare_Nuclei'] != '?']
+        self.data['Bare_Nuclei'] = self.data['Bare_Nuclei'].astype(int)
         self.data.reset_index(inplace=True, drop=True)
 
         # We'll make a deep copy of our data set

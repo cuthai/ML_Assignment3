@@ -59,26 +59,14 @@ class ID3Classifier:
             chosen_partition = None
 
             if self.feature_names[feature_name] == 'categorical':
-                partitions = train_data[feature_name].unique().tolist()
-                for partition in partitions:
-                    partition_count = len(train_data.loc[train_data[feature_name] == partition])
-                    partition_entropy = 0
-
-                    for class_name in self.class_names:
-                        partition_class_count = len(train_data.loc[(train_data[feature_name] == partition) &
-                                                                   (train_data['Class'] == class_name)])
-                        if partition_class_count != 0:
-                            partition_entropy += - (partition_class_count / partition_count) * \
-                                                 math.log((partition_class_count / partition_count), 2)
-
-                    expectation += (partition_count / normalizer) * partition_entropy
+                expectation = self.calculate_expectation_categorical(train_data=train_data, feature_name=feature_name)
 
             else:
                 partitions = []
                 for class_name in self.class_names:
                     if len(train_data.loc[train_data['Class'] == class_name]) > 0:
                         partitions.append((train_data.loc[train_data['Class'] == class_name][feature_name].max() +
-                                          train_data.loc[train_data['Class'] != class_name][feature_name].min()) / 2)
+                                           train_data.loc[train_data['Class'] != class_name][feature_name].min()) / 2)
                         partitions.append((train_data.loc[train_data['Class'] == class_name][feature_name].min() +
                                            train_data.loc[train_data['Class'] != class_name][feature_name].max()) / 2)
 
@@ -125,8 +113,6 @@ class ID3Classifier:
                 max_feature_name = feature_name
                 max_partition = chosen_partition
 
-        feature_names.remove(max_feature_name)
-
         if len(feature_names) > 0:
             if max_partition:
                 lower_new_train_data = train_data.loc[train_data[max_feature_name] <= max_partition]
@@ -155,3 +141,23 @@ class ID3Classifier:
 
         else:
             return train_data
+
+    def calculate_expectation_categorical(self, train_data, feature_name):
+        normalizer = len(train_data)
+        expectation = 0
+
+        partitions = train_data[feature_name].unique().tolist()
+        for partition in partitions:
+            partition_count = len(train_data.loc[train_data[feature_name] == partition])
+            partition_entropy = 0
+
+            for class_name in self.class_names:
+                partition_class_count = len(train_data.loc[(train_data[feature_name] == partition) &
+                                                           (train_data['Class'] == class_name)])
+                if partition_class_count != 0:
+                    partition_entropy += - (partition_class_count / partition_count) * \
+                                         math.log((partition_class_count / partition_count), 2)
+
+            expectation += (partition_count / normalizer) * partition_entropy
+
+        return expectation
