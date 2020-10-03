@@ -1,6 +1,6 @@
 import math
 import copy
-import numpy as np
+import pandas as pd
 
 
 class ID3Classifier:
@@ -19,7 +19,6 @@ class ID3Classifier:
 
         # Tune Results
         self.tune_results = {}
-        self.k = 1
 
         # Test Results
         self.test_results = {}
@@ -173,3 +172,46 @@ class ID3Classifier:
                 expectation = partition_expectation
 
         return expectation, chosen_partition
+
+    def predict(self):
+        for index in range(5):
+            test_data = self.test_split[index]
+            tree = self.train_models[index]
+            test_result = self.classify(prediction_data=test_data, tree=tree)
+
+            self.test_results.update({index: test_result})
+
+    def classify(self, prediction_data, tree):
+        test_result = pd.DataFrame()
+
+        if isinstance(tree, pd.DataFrame):
+            prediction = tree['Class'].mode()[0]
+            prediction_data['Prediction'] = prediction
+
+            return prediction_data
+
+        for feature_name in tree.keys():
+            for partition in tree[feature_name]:
+                new_tree = tree[feature_name][partition]
+
+                if partition[0] == '<':
+                    partition = float(partition[1:])
+
+                    new_prediction_data = pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name]
+                                                                                <= partition], deep=True)
+
+                elif partition[0] == '>':
+                    partition = float(partition[1:])
+
+                    new_prediction_data = pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name]
+                                                                                > partition], deep=True)
+
+                else:
+                    new_prediction_data = pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name]
+                                                                                == partition], deep=True)
+
+                new_prediction_data = self.classify(prediction_data=new_prediction_data, tree=new_tree)
+
+                test_result = test_result.append(new_prediction_data)
+
+        return test_result

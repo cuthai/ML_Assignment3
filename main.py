@@ -29,35 +29,10 @@ def main():
     # Fit
     dt_model.fit()
 
-    # # Tune K and Sigma
-    # dt_model.tune()
-    #
-    # # Tune and fit Epsilon for edited and condensed
-    # if arguments.knn_type in ['edited', 'condensed']:
-    #     # If epsilon was passed, used that
-    #     if arguments.epsilon:
-    #         epsilon_range = [arguments.epsilon]
-    #     else:
-    #         epsilon_range = None
-    #
-    #     # Tune and fit Epsilon
-    #     dt_model.fit_modified(epsilon_range=epsilon_range)
-    #
-    # # If K and Sigma were passed, replace the tune outcome
-    # if arguments.k:
-    #     dt_model.k = arguments.k
-    # if arguments.sigma:
-    #     dt_model.sigma = arguments.sigma
-    #
-    # # Predict
-    # dt_model.predict()
-    #
-    # # Output
-    # dt_model.output()
-    #
-    # # Tune Visualize, if they weren't passed at the command line
-    # if arguments.k == arguments.sigma == arguments.epsilon is None:
-    #     dt_model.visualize_tune()
+    # Predict
+    dt_model.predict()
+
+    pass
 
 
 if __name__ == '__main__':
