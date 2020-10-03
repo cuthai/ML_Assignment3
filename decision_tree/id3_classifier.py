@@ -4,7 +4,7 @@ import pandas as pd
 
 
 class ID3Classifier:
-    def __init__(self, etl):
+    def __init__(self, etl, prune=False):
         # Set the attributes to hold our data
         self.etl = etl
         self.data_name = self.etl.data_name
@@ -13,12 +13,10 @@ class ID3Classifier:
         self.train_split = etl.train_split
         self.class_names = etl.class_names
         self.feature_names = etl.feature_names
+        self.prune_tree = prune
 
         # Train Results
         self.train_models = {}
-
-        # Validation Results
-        self.validation_results = {}
 
         # Test Results
         self.test_results = {}
@@ -34,6 +32,9 @@ class ID3Classifier:
             tree = self.branch(train_data, initial_features)
 
             self.train_models.update({train_index: tree})
+
+        if self.prune_tree:
+            self.prune()
 
     def branch(self, train_data, feature_names):
         feature_names = copy.deepcopy(feature_names)
@@ -195,16 +196,16 @@ class ID3Classifier:
                 new_tree = tree[feature_name][partition]
 
                 if partition[0] == '<':
-                    partition = float(partition[1:])
+                    float_partition = float(partition[1:])
 
                     new_prediction_data = pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name]
-                                                                                <= partition], deep=True)
+                                                                                <= float_partition], deep=True)
 
                 elif partition[0] == '>':
-                    partition = float(partition[1:])
+                    float_partition = float(partition[1:])
 
                     new_prediction_data = pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name]
-                                                                                > partition], deep=True)
+                                                                                > float_partition], deep=True)
 
                 else:
                     new_prediction_data = pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name]
@@ -224,7 +225,7 @@ class ID3Classifier:
             self.test_results.update({index: test_result})
 
     def validate(self, prediction_data, tree):
-        test_result = pd.DataFrame()
+        validation_result = pd.DataFrame()
         new_leaf = pd.DataFrame()
 
         if isinstance(tree, pd.DataFrame):
@@ -238,16 +239,16 @@ class ID3Classifier:
                 new_tree = tree[feature_name][partition]
 
                 if partition[0] == '<':
-                    partition = float(partition[1:])
+                    float_partition = float(partition[1:])
 
                     new_prediction_data = pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name]
-                                                                                <= partition], deep=True)
+                                                                                <= float_partition], deep=True)
 
                 elif partition[0] == '>':
-                    partition = float(partition[1:])
+                    float_partition = float(partition[1:])
 
                     new_prediction_data = pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name]
-                                                                                > partition], deep=True)
+                                                                                > float_partition], deep=True)
 
                 else:
                     new_prediction_data = pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name]
@@ -257,22 +258,25 @@ class ID3Classifier:
 
                 tree[feature_name][partition] = branch
 
-                test_result = test_result.append(new_prediction_data)
+                validation_result = validation_result.append(new_prediction_data)
 
                 new_leaf = new_leaf.append(leaf)
 
-            if len(test_result) == 0:
-                return test_result, new_leaf, new_leaf
+            if len(validation_result) == 0:
+                return validation_result, new_leaf, new_leaf
 
-            old_misclassification = len(test_result.loc[test_result['Class'] != test_result['Prediction']]) / \
-                                    len(test_result)
+            old_misclassification = len(validation_result.loc[validation_result['Class'] !=
+                                                              validation_result['Prediction']]) /\
+                                    len(validation_result)
+
             new_classification = new_leaf['Class'].mode()[0]
-            new_misclassification = len(test_result.loc[test_result['Class'] != new_classification]) / len(test_result)
+            new_misclassification = len(validation_result.loc[validation_result['Class'] != new_classification]) / \
+                                    len(validation_result)
 
             if new_misclassification <= old_misclassification:
-                test_result['Prediction'] = new_classification
+                validation_result['Prediction'] = new_classification
 
-                return test_result, new_leaf, new_leaf
+                return validation_result, new_leaf, new_leaf
 
             else:
-                return test_result, tree, new_leaf
+                return validation_result, tree, new_leaf

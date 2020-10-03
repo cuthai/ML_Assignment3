@@ -16,7 +16,8 @@ def main():
 
     # Set up kwargs for KNN
     kwargs = {
-        'etl': etl
+        'etl': etl,
+        'prune': arguments.prune
     }
     # KNN
     # Classification
@@ -28,9 +29,6 @@ def main():
 
     # Fit
     dt_model.fit()
-
-    # Prune
-    dt_model.prune()
 
     # Predict
     dt_model.predict()
