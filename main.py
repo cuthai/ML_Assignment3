@@ -29,6 +29,9 @@ def main():
     # Fit
     dt_model.fit()
 
+    # Prune
+    dt_model.prune()
+
     # Predict
     dt_model.predict()
 

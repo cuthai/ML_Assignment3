@@ -27,7 +27,7 @@ class ETL:
         # Set the attributes to hold our data
         self.data = None
         self.transformed_data = None
-        self.tune_data = None
+        self.validation_data = None
         self.test_split = {}
         self.train_split = {}
 
@@ -268,33 +268,33 @@ class ETL:
 
     def cv_split_classification(self):
         """
-        Function to split our transformed data into 10% tune and 5 cross validation splits for classification
+        Function to split our transformed data into 10% validation and 5 cross validation splits for classification
 
-        First this function randomizes a number between one and 10 to split out a tune set. After a number is randomized
+        First this function randomizes a number between one and 10 to split out a validation set. After a number is randomized
             and the data is sorted over the class and random number. The index of the data is then mod by 5 and each
             remainder represents a set for cv splitting.
 
-        :return self.test_split: dict (of DataFrames), dictionary with keys (tune, 0, 1, 2, 3, 4) referring to the
+        :return self.test_split: dict (of DataFrames), dictionary with keys (validation, 0, 1, 2, 3, 4) referring to the
             split transformed data
         """
-        # Define base data size and size of tune
+        # Define base data size and size of validation
         data_size = len(self.transformed_data)
-        tune_size = int(data_size / 10)
+        validation_size = int(data_size / 10)
 
         # Check and set the random seed
         if self.random_state:
             np.random.seed(self.random_state)
 
-        # Sample for tune
-        tune_splitter = []
+        # Sample for validation
+        validation_splitter = []
 
         # Randomize a number between 0 and 10 and multiply by the index to randomly pick observations over data set
-        for index in range(tune_size):
-            tune_splitter.append(np.random.choice(a=10) + (10 * index))
-        self.tune_data = self.transformed_data.iloc[tune_splitter]
+        for index in range(validation_size):
+            validation_splitter.append(np.random.choice(a=10) + (10 * index))
+        self.validation_data = self.transformed_data.iloc[validation_splitter]
 
-        # Determine the remaining index that weren't picked for tune
-        remainder = list(set(self.transformed_data.index) - set(tune_splitter))
+        # Determine the remaining index that weren't picked for validation
+        remainder = list(set(self.transformed_data.index) - set(validation_splitter))
         remainder_df = pd.DataFrame(self.transformed_data.iloc[remainder]['Class'])
 
         # Assign a random number
@@ -316,31 +316,31 @@ class ETL:
 
     def cv_split_regression(self):
         """
-        Function to split our transformed data into 10% tune and 5 cross validation splits for regression
+        Function to split our transformed data into 10% validation and 5 cross validation splits for regression
 
-        First this function splits out a tune set. The remainder is sampled 5 times to produce 5 cv splits.
+        First this function splits out a validation set. The remainder is sampled 5 times to produce 5 cv splits.
 
-        :return self.test_split: dict (of DataFrames), dictionary with keys (tune, 0, 1, 2, 3, 4) referring to the
+        :return self.test_split: dict (of DataFrames), dictionary with keys (validation, 0, 1, 2, 3, 4) referring to the
             split transformed data
         """
-        # Define base data size and size of tune and splits
+        # Define base data size and size of validation and splits
         data_size = len(self.transformed_data)
-        tune_size = int(data_size / 10)
-        cv_size = int((data_size - tune_size) / 5)
+        validation_size = int(data_size / 10)
+        cv_size = int((data_size - validation_size) / 5)
 
         # The extra data will go to the first splits. The remainder of the length divided by 5 defines how many extra
-        extra_data = int((data_size - tune_size) % 5)
+        extra_data = int((data_size - validation_size) % 5)
 
         # Check and set the random seed
         if self.random_state:
             np.random.seed(self.random_state)
 
-        # Sample for tune
-        tune_splitter = np.random.choice(a=data_size, size=tune_size, replace=False)
-        self.tune_data = self.transformed_data.iloc[tune_splitter]
+        # Sample for validation
+        validation_splitter = np.random.choice(a=data_size, size=validation_size, replace=False)
+        self.validation_data = self.transformed_data.iloc[validation_splitter]
 
-        # Determine the remaining index that weren't picked for tune
-        remainder = list(set(self.transformed_data.index) - set(tune_splitter))
+        # Determine the remaining index that weren't picked for validation
+        remainder = list(set(self.transformed_data.index) - set(validation_splitter))
 
         # CV Split
         for index in range(5):

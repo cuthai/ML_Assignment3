@@ -8,7 +8,7 @@ class ID3Classifier:
         # Set the attributes to hold our data
         self.etl = etl
         self.data_name = self.etl.data_name
-        self.tune_data = etl.tune_data
+        self.validation_data = etl.validation_data
         self.test_split = etl.test_split
         self.train_split = etl.train_split
         self.class_names = etl.class_names
@@ -17,8 +17,8 @@ class ID3Classifier:
         # Train Results
         self.train_models = {}
 
-        # Tune Results
-        self.tune_results = {}
+        # Validation Results
+        self.validation_results = {}
 
         # Test Results
         self.test_results = {}
@@ -215,3 +215,64 @@ class ID3Classifier:
                 test_result = test_result.append(new_prediction_data)
 
         return test_result
+
+    def prune(self):
+        for index in range(5):
+            tree = self.train_models[index]
+            test_result = self.validate(prediction_data=self.validation_data, tree=tree)
+
+            self.test_results.update({index: test_result})
+
+    def validate(self, prediction_data, tree):
+        test_result = pd.DataFrame()
+        new_leaf = pd.DataFrame()
+
+        if isinstance(tree, pd.DataFrame):
+            prediction = tree['Class'].mode()[0]
+            prediction_data['Prediction'] = prediction
+
+            return prediction_data, tree, tree
+
+        for feature_name in tree.keys():
+            for partition in tree[feature_name]:
+                new_tree = tree[feature_name][partition]
+
+                if partition[0] == '<':
+                    partition = float(partition[1:])
+
+                    new_prediction_data = pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name]
+                                                                                <= partition], deep=True)
+
+                elif partition[0] == '>':
+                    partition = float(partition[1:])
+
+                    new_prediction_data = pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name]
+                                                                                > partition], deep=True)
+
+                else:
+                    new_prediction_data = pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name]
+                                                                                == partition], deep=True)
+
+                new_prediction_data, branch, leaf = self.validate(prediction_data=new_prediction_data, tree=new_tree)
+
+                tree[feature_name][partition] = branch
+
+                test_result = test_result.append(new_prediction_data)
+
+                new_leaf = new_leaf.append(leaf)
+
+            if len(test_result) == 0:
+                return test_result, new_leaf, new_leaf
+
+            old_misclassification = len(test_result.loc[test_result['Class'] != test_result['Prediction']]) / \
+                                    len(test_result)
+            new_classification = new_leaf['Class'].mode()[0]
+            new_misclassification = len(test_result.loc[test_result['Class'] != new_classification]) / len(test_result)
+
+            if new_misclassification <= old_misclassification:
+                test_result['Prediction'] = new_classification
+
+                return test_result, new_leaf, new_leaf
+
+            else:
+                return test_result, tree, new_leaf
