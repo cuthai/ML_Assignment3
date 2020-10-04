@@ -28,6 +28,7 @@ class ETL:
         self.data = None
         self.transformed_data = None
         self.validation_data = None
+        self.tune_data = None
         self.test_split = {}
         self.train_split = {}
 
@@ -326,10 +327,10 @@ class ETL:
         # Define base data size and size of validation and splits
         data_size = len(self.transformed_data)
         validation_size = int(data_size / 10)
-        cv_size = int((data_size - validation_size) / 5)
+        cv_size = int((data_size - validation_size - validation_size) / 5)
 
         # The extra data will go to the first splits. The remainder of the length divided by 5 defines how many extra
-        extra_data = int((data_size - validation_size) % 5)
+        extra_data = int(cv_size % 5)
 
         # Check and set the random seed
         if self.random_state:
@@ -341,6 +342,13 @@ class ETL:
 
         # Determine the remaining index that weren't picked for validation
         remainder = list(set(self.transformed_data.index) - set(validation_splitter))
+
+        # Sample for tune
+        tune_splitter = np.random.choice(a=remainder, size=validation_size, replace=False)
+        self.tune_data = self.transformed_data.iloc[tune_splitter]
+
+        # Determine the remaining index that weren't picked for validation
+        remainder = list(set(remainder) - set(tune_splitter))
 
         # CV Split
         for index in range(5):

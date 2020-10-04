@@ -1,6 +1,7 @@
 from utils.args import args
 from etl.etl import ETL
 from decision_tree.id3_classifier import ID3Classifier
+from decision_tree.cart_regressor import CARTRegressor
 
 
 def main():
@@ -25,7 +26,7 @@ def main():
         dt_model = ID3Classifier(**kwargs)
     # Regression
     else:
-        pass
+        dt_model = CARTRegressor(**kwargs)
 
     # Fit
     dt_model.fit()
