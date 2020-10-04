@@ -125,7 +125,7 @@ class ID3Classifier:
 
     def calculate_expectation_numerical(self, train_data, feature_name):
         normalizer = len(train_data)
-        expectation = 0
+        expectation = 1000000
         chosen_partition = None
 
         partitions = []
@@ -166,9 +166,6 @@ class ID3Classifier:
             partition_expectation += (upper_partition_count / normalizer) * upper_partition_entropy
 
             if partition_expectation < expectation:
-                chosen_partition = partition
-                expectation = partition_expectation
-            elif expectation == 0:
                 chosen_partition = partition
                 expectation = partition_expectation
 
