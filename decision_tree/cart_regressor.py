@@ -195,21 +195,12 @@ class CARTRegressor:
             for partition in tree[feature_name]:
                 new_tree = tree[feature_name][partition]
 
-                if partition[0] == '<':
-                    float_partition = float(partition[1:])
-
-                    new_prediction_data = pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name]
-                                                                                <= float_partition], deep=True)
-
-                elif partition[0] == '>':
-                    float_partition = float(partition[1:])
-
-                    new_prediction_data = pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name]
-                                                                                > float_partition], deep=True)
-
-                else:
-                    new_prediction_data = pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name]
-                                                                                == partition], deep=True)
+                kwargs = {
+                    'prediction_data': prediction_data,
+                    'feature_name': feature_name,
+                    'partition': partition
+                }
+                new_prediction_data = filter_data(**kwargs)
 
                 new_prediction_data = self.classify(prediction_data=new_prediction_data, tree=new_tree)
 
@@ -220,11 +211,11 @@ class CARTRegressor:
     def prune(self):
         for index in range(5):
             tree = self.train_models[index]
-            test_result = self.validate(prediction_data=self.validation_data, tree=tree)
+            test_result = self.prune_branch(prediction_data=self.validation_data, tree=tree)
 
             self.test_results.update({index: test_result})
 
-    def validate(self, prediction_data, tree):
+    def prune_branch(self, prediction_data, tree):
         validation_result = pd.DataFrame()
         new_leaf = pd.DataFrame()
 
@@ -238,23 +229,15 @@ class CARTRegressor:
             for partition in tree[feature_name]:
                 new_tree = tree[feature_name][partition]
 
-                if partition[0] == '<':
-                    float_partition = float(partition[1:])
+                kwargs = {
+                    'prediction_data': prediction_data,
+                    'feature_name': feature_name,
+                    'partition': partition
+                }
+                new_prediction_data = filter_data(**kwargs)
 
-                    new_prediction_data = pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name]
-                                                                                <= float_partition], deep=True)
-
-                elif partition[0] == '>':
-                    float_partition = float(partition[1:])
-
-                    new_prediction_data = pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name]
-                                                                                > float_partition], deep=True)
-
-                else:
-                    new_prediction_data = pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name]
-                                                                                == partition], deep=True)
-
-                new_prediction_data, branch, leaf = self.validate(prediction_data=new_prediction_data, tree=new_tree)
+                new_prediction_data, branch, leaf = self.prune_branch(prediction_data=new_prediction_data,
+                                                                      tree=new_tree)
 
                 tree[feature_name][partition] = branch
 
@@ -266,7 +249,7 @@ class CARTRegressor:
                 return validation_result, new_leaf, new_leaf
 
             old_misclassification = len(validation_result.loc[validation_result['Class'] !=
-                                                              validation_result['Prediction']]) /\
+                                                              validation_result['Prediction']]) / \
                                     len(validation_result)
 
             new_classification = new_leaf['Class'].mode()[0]
@@ -280,3 +263,18 @@ class CARTRegressor:
 
             else:
                 return validation_result, tree, new_leaf
+
+
+def filter_data(prediction_data, feature_name, partition):
+    if partition[0] == '<':
+        float_partition = float(partition[1:])
+
+        return pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name] <= float_partition], deep=True)
+
+    elif partition[0] == '>':
+        float_partition = float(partition[1:])
+
+        return pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name] > float_partition], deep=True)
+
+    else:
+        return pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name] == partition], deep=True)
