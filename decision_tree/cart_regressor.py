@@ -114,7 +114,7 @@ class CARTRegressor:
         chosen_partition = None
 
         partitions = []
-        for quantile in [.35, .4, .45, .5, .55, .6, .65]:
+        for quantile in [.4, .45, .5, .55, .6]:
             partitions.append(train_data[feature_name].quantile(quantile))
 
         partitions = set(partitions)
