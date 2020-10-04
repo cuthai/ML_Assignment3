@@ -330,7 +330,7 @@ class ETL:
         cv_size = int((data_size - validation_size - validation_size) / 5)
 
         # The extra data will go to the first splits. The remainder of the length divided by 5 defines how many extra
-        extra_data = int(cv_size % 5)
+        extra_data = int((data_size - validation_size - validation_size) % cv_size)
 
         # Check and set the random seed
         if self.random_state:

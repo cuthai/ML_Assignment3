@@ -1,4 +1,3 @@
-import math
 import copy
 import pandas as pd
 
@@ -11,7 +10,6 @@ class CARTRegressor:
         self.validation_data = etl.validation_data
         self.test_split = etl.test_split
         self.train_split = etl.train_split
-        self.class_names = etl.class_names
         self.feature_names = etl.feature_names
         self.prune_tree = prune
 
@@ -39,140 +37,109 @@ class CARTRegressor:
     def branch(self, train_data, feature_names):
         feature_names = copy.deepcopy(feature_names)
 
-        normalizer = len(train_data)
-        entropy = 0
-
-        if normalizer == 0 or len(feature_names) == 0:
+        if len(train_data) == 0 or len(feature_names) == 0:
             return train_data
 
-        for class_name in self.class_names:
-            class_count = len(train_data.loc[train_data['Class'] == class_name])
-            if class_count != 0:
-                entropy += - (class_count / normalizer) * math.log((class_count / normalizer), 2)
+        min_mse = 0
+        min_feature_name = None
+        min_partition = None
 
-        if entropy == 0:
-            return train_data
-
-        max_gain = 0
-        max_feature_name = None
-        max_partition = None
+        partition_prediction = train_data.iloc[:, -1].mean()
+        min_mse += ((train_data.iloc[:, -1] - partition_prediction) ** 2).sum()
+        min_mse = min_mse / len(train_data)
 
         for feature_name in feature_names:
             chosen_partition = None
 
             if self.feature_names[feature_name] == 'categorical':
-                expectation = self.calculate_expectation_categorical(train_data=train_data, feature_name=feature_name)
+                feature_mse = self.calculate_mse_categorical(train_data=train_data, feature_name=feature_name)
 
             else:
-                expectation, chosen_partition = self.calculate_expectation_numerical(train_data=train_data,
-                                                                                     feature_name=feature_name)
+                feature_mse, chosen_partition = self.calculate_mse_numerical(train_data=train_data,
+                                                                             feature_name=feature_name)
 
-            gain = entropy - expectation
+            if feature_mse < min_mse:
+                min_mse = feature_mse
+                min_feature_name = feature_name
+                min_partition = chosen_partition
 
-            if gain > max_gain:
-                max_gain = gain
-                max_feature_name = feature_name
-                max_partition = chosen_partition
-
-        if len(feature_names) > 0:
-            if max_partition:
-                lower_new_train_data = train_data.loc[train_data[max_feature_name] <= max_partition]
-                upper_new_train_data = train_data.loc[train_data[max_feature_name] > max_partition]
+        if min_feature_name:
+            if min_partition:
+                lower_new_train_data = train_data.loc[train_data[min_feature_name] <= min_partition]
+                upper_new_train_data = train_data.loc[train_data[min_feature_name] > min_partition]
 
                 tree = {
-                    max_feature_name: {
-                        f'<{max_partition}':
+                    min_feature_name: {
+                        f'<{min_partition}':
                             self.branch(train_data=lower_new_train_data, feature_names=feature_names),
-                        f'>{max_partition}':
+                        f'>{min_partition}':
                             self.branch(train_data=upper_new_train_data, feature_names=feature_names)
                     }
                 }
 
             else:
-                max_feature_partitions = train_data[max_feature_name].unique().tolist()
-                tree = {max_feature_name: {partition: {} for partition in max_feature_partitions}}
+                min_feature_partitions = train_data[min_feature_name].unique().tolist()
+                tree = {min_feature_name: {partition: {} for partition in min_feature_partitions}}
 
-                for partition in max_feature_partitions:
-                    new_train_data = train_data.loc[train_data[max_feature_name] == partition]
+                for partition in min_feature_partitions:
+                    new_train_data = train_data.loc[train_data[min_feature_name] == partition]
                     next_branch = self.branch(train_data=new_train_data, feature_names=feature_names)
 
-                    tree[max_feature_name].update({partition: next_branch})
+                    tree[min_feature_name].update({partition: next_branch})
 
             return tree
 
         else:
             return train_data
 
-    def calculate_expectation_categorical(self, train_data, feature_name):
-        normalizer = len(train_data)
-        expectation = 0
+    def calculate_mse_categorical(self, train_data, feature_name):
+        if not self:
+            raise NotImplementedError
+
+        mse = 0
 
         partitions = train_data[feature_name].unique().tolist()
         for partition in partitions:
-            partition_count = len(train_data.loc[train_data[feature_name] == partition])
-            partition_entropy = 0
+            partition_data = train_data.loc[train_data[feature_name] == partition]
+            partition_prediction = partition_data.iloc[:, -1].mean()
+            mse += ((partition_data.iloc[:, -1] - partition_prediction) ** 2).sum()
 
-            for class_name in self.class_names:
-                partition_class_count = len(train_data.loc[(train_data[feature_name] == partition) &
-                                                           (train_data['Class'] == class_name)])
-                if partition_class_count != 0:
-                    partition_entropy += - (partition_class_count / partition_count) * \
-                                         math.log((partition_class_count / partition_count), 2)
+        return mse / len(train_data)
 
-            expectation += (partition_count / normalizer) * partition_entropy
+    def calculate_mse_numerical(self, train_data, feature_name):
+        if not self:
+            raise NotImplementedError
 
-        return expectation
-
-    def calculate_expectation_numerical(self, train_data, feature_name):
-        normalizer = len(train_data)
-        expectation = 0
+        mse = 0
         chosen_partition = None
 
         partitions = []
-        for class_name in self.class_names:
-            if len(train_data.loc[train_data['Class'] == class_name]) > 0:
-                partitions.append((train_data.loc[train_data['Class'] == class_name][feature_name].max() +
-                                   train_data.loc[train_data['Class'] != class_name][feature_name].min()) / 2)
-                partitions.append((train_data.loc[train_data['Class'] == class_name][feature_name].min() +
-                                   train_data.loc[train_data['Class'] != class_name][feature_name].max()) / 2)
+        for quantile in [.35, .4, .45, .5, .55, .6, .65]:
+            partitions.append(train_data[feature_name].quantile(quantile))
 
         partitions = set(partitions)
 
         for partition in partitions:
-            partition_expectation = 0
-            lower_partition_count = len(train_data.loc[train_data[feature_name] <= partition])
-            upper_partition_count = len(train_data.loc[train_data[feature_name] > partition])
-            lower_partition_entropy = 0
-            upper_partition_entropy = 0
+            partition_mse = 0
 
-            for class_name in self.class_names:
-                lower_partition_class_count = len(train_data.loc[(train_data[feature_name] <= partition) &
-                                                                 (train_data['Class'] == class_name)])
+            lower_partition_data = train_data.loc[train_data[feature_name] <= partition]
+            lower_partition_prediction = lower_partition_data.iloc[:, -1].mean()
+            partition_mse += ((lower_partition_data.iloc[:, -1] - lower_partition_prediction) ** 2).sum()
 
-                upper_partition_class_count = len(train_data.loc[(train_data[feature_name] > partition) &
-                                                                 (train_data['Class'] == class_name)])
+            upper_partition_data = train_data.loc[train_data[feature_name] > partition]
+            upper_partition_prediction = upper_partition_data.iloc[:, -1].mean()
+            partition_mse += ((upper_partition_data.iloc[:, -1] - upper_partition_prediction) ** 2).sum()
 
-                if lower_partition_class_count != 0:
-                    lower_partition_entropy += - (lower_partition_class_count / lower_partition_count) * \
-                                               math.log((lower_partition_class_count / lower_partition_count),
-                                                        2)
+            partition_mse = partition_mse / len(train_data)
 
-                if upper_partition_class_count != 0:
-                    upper_partition_entropy += - (upper_partition_class_count / upper_partition_count) * \
-                                               math.log((upper_partition_class_count / upper_partition_count),
-                                                        2)
-
-            partition_expectation += (lower_partition_count / normalizer) * lower_partition_entropy
-            partition_expectation += (upper_partition_count / normalizer) * upper_partition_entropy
-
-            if partition_expectation < expectation:
+            if partition_mse < mse:
                 chosen_partition = partition
-                expectation = partition_expectation
-            elif expectation == 0:
+                mse = partition_mse
+            elif mse == 0:
                 chosen_partition = partition
-                expectation = partition_expectation
+                mse = partition_mse
 
-        return expectation, chosen_partition
+        return mse, chosen_partition
 
     def predict(self):
         for index in range(5):
