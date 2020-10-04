@@ -125,7 +125,7 @@ class ID3Classifier:
 
     def calculate_expectation_numerical(self, train_data, feature_name):
         normalizer = len(train_data)
-        expectation = 1000000
+        expectation = 0
         chosen_partition = None
 
         partitions = []
@@ -168,6 +168,9 @@ class ID3Classifier:
             if partition_expectation < expectation:
                 chosen_partition = partition
                 expectation = partition_expectation
+            elif expectation == 0:
+                chosen_partition = partition
+                expectation = partition_expectation
 
         return expectation, chosen_partition
 
@@ -197,7 +200,7 @@ class ID3Classifier:
                     'feature_name': feature_name,
                     'partition': partition
                 }
-                new_prediction_data = filter_data(**kwargs)
+                new_prediction_data = self.filter_data(**kwargs)
 
                 new_prediction_data = self.classify(prediction_data=new_prediction_data, tree=new_tree)
 
@@ -231,7 +234,7 @@ class ID3Classifier:
                     'feature_name': feature_name,
                     'partition': partition
                 }
-                new_prediction_data = filter_data(**kwargs)
+                new_prediction_data = self.filter_data(**kwargs)
 
                 new_prediction_data, branch, leaf = self.prune_branch(prediction_data=new_prediction_data, tree=new_tree)
 
@@ -260,17 +263,19 @@ class ID3Classifier:
             else:
                 return validation_result, tree, new_leaf
 
+    def filter_data(self, prediction_data, feature_name, partition):
+        if not self:
+            raise NotImplementedError
 
-def filter_data(prediction_data, feature_name, partition):
-    if partition[0] == '<':
-        float_partition = float(partition[1:])
+        if partition[0] == '<':
+            float_partition = float(partition[1:])
 
-        return pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name] <= float_partition], deep=True)
+            return pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name] <= float_partition], deep=True)
 
-    elif partition[0] == '>':
-        float_partition = float(partition[1:])
+        elif partition[0] == '>':
+            float_partition = float(partition[1:])
 
-        return pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name] > float_partition], deep=True)
+            return pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name] > float_partition], deep=True)
 
-    else:
-        return pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name] == partition], deep=True)
+        else:
+            return pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name] == partition], deep=True)
