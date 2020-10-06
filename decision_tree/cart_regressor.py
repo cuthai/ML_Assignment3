@@ -145,15 +145,15 @@ class CARTRegressor:
         for index in range(5):
             test_data = self.test_split[index]
             tree = self.train_models[index]
-            test_result = self.classify(prediction_data=test_data, tree=tree)
+            test_result = self.regress(prediction_data=test_data, tree=tree)
 
             self.test_results.update({index: test_result})
 
-    def classify(self, prediction_data, tree):
+    def regress(self, prediction_data, tree):
         test_result = pd.DataFrame()
 
         if isinstance(tree, pd.DataFrame):
-            prediction = tree['Class'].mode()[0]
+            prediction = tree.iloc[:, -1].mean()
             prediction_data['Prediction'] = prediction
 
             return prediction_data
@@ -169,7 +169,7 @@ class CARTRegressor:
                 }
                 new_prediction_data = filter_data(**kwargs)
 
-                new_prediction_data = self.classify(prediction_data=new_prediction_data, tree=new_tree)
+                new_prediction_data = self.regress(prediction_data=new_prediction_data, tree=new_tree)
 
                 test_result = test_result.append(new_prediction_data)
 
@@ -233,12 +233,12 @@ class CARTRegressor:
 
 
 def filter_data(prediction_data, feature_name, partition):
-    if partition[0] == '<':
+    if str(partition)[0] == '<':
         float_partition = float(partition[1:])
 
         return pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name] <= float_partition], deep=True)
 
-    elif partition[0] == '>':
+    elif str(partition)[0] == '>':
         float_partition = float(partition[1:])
 
         return pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name] > float_partition], deep=True)
