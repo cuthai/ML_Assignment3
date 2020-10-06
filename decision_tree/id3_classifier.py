@@ -18,6 +18,9 @@ class ID3Classifier:
         # Train Results
         self.train_models = {}
 
+        # Validation Results
+        self.validation_results = {}
+
         # Test Results
         self.test_results = {}
 
@@ -74,34 +77,30 @@ class ID3Classifier:
                 max_feature_name = feature_name
                 max_partition = chosen_partition
 
-        if len(feature_names) > 0:
-            if max_partition:
-                lower_new_train_data = train_data.loc[train_data[max_feature_name] <= max_partition]
-                upper_new_train_data = train_data.loc[train_data[max_feature_name] > max_partition]
+        if max_partition:
+            lower_new_train_data = train_data.loc[train_data[max_feature_name] <= max_partition]
+            upper_new_train_data = train_data.loc[train_data[max_feature_name] > max_partition]
 
-                tree = {
-                    max_feature_name: {
-                        f'<{max_partition}':
-                            self.branch(train_data=lower_new_train_data, feature_names=feature_names),
-                        f'>{max_partition}':
-                            self.branch(train_data=upper_new_train_data, feature_names=feature_names)
-                    }
+            tree = {
+                max_feature_name: {
+                    f'<{max_partition}':
+                        self.branch(train_data=lower_new_train_data, feature_names=feature_names),
+                    f'>{max_partition}':
+                        self.branch(train_data=upper_new_train_data, feature_names=feature_names)
                 }
-
-            else:
-                max_feature_partitions = train_data[max_feature_name].unique().tolist()
-                tree = {max_feature_name: {partition: {} for partition in max_feature_partitions}}
-
-                for partition in max_feature_partitions:
-                    new_train_data = train_data.loc[train_data[max_feature_name] == partition]
-                    next_branch = self.branch(train_data=new_train_data, feature_names=feature_names)
-
-                    tree[max_feature_name].update({partition: next_branch})
-
-            return tree
+            }
 
         else:
-            return train_data
+            max_feature_partitions = train_data[max_feature_name].unique().tolist()
+            tree = {max_feature_name: {partition: {} for partition in max_feature_partitions}}
+
+            for partition in max_feature_partitions:
+                new_train_data = train_data.loc[train_data[max_feature_name] == partition]
+                next_branch = self.branch(train_data=new_train_data, feature_names=feature_names)
+
+                tree[max_feature_name].update({partition: next_branch})
+
+        return tree
 
     def calculate_expectation_categorical(self, train_data, feature_name):
         normalizer = len(train_data)
@@ -211,9 +210,10 @@ class ID3Classifier:
     def prune(self):
         for index in range(5):
             tree = self.train_models[index]
-            test_result = self.prune_branch(prediction_data=self.validation_data, tree=tree)
+            validation_result, train_model, new_leaf = self.prune_branch(prediction_data=self.validation_data, tree=tree)
 
-            self.test_results.update({index: test_result})
+            self.train_models.update({index: train_model})
+            self.validation_results.update({index: validation_result})
 
     def prune_branch(self, prediction_data, tree):
         validation_result = pd.DataFrame()
@@ -236,11 +236,12 @@ class ID3Classifier:
                 }
                 new_prediction_data = self.filter_data(**kwargs)
 
-                new_prediction_data, branch, leaf = self.prune_branch(prediction_data=new_prediction_data, tree=new_tree)
+                new_validation_result, branch, leaf = self.prune_branch(prediction_data=new_prediction_data,
+                                                                        tree=new_tree)
 
                 tree[feature_name][partition] = branch
 
-                validation_result = validation_result.append(new_prediction_data)
+                validation_result = validation_result.append(new_validation_result)
 
                 new_leaf = new_leaf.append(leaf)
 
@@ -252,8 +253,8 @@ class ID3Classifier:
                                     len(validation_result)
 
             new_classification = new_leaf['Class'].mode()[0]
-            new_misclassification = len(validation_result.loc[validation_result['Class'] != new_classification]) / \
-                                    len(validation_result)
+            new_misclassification = len(prediction_data.loc[prediction_data['Class'] != new_classification]) / \
+                                    len(prediction_data)
 
             if new_misclassification <= old_misclassification:
                 validation_result['Prediction'] = new_classification
