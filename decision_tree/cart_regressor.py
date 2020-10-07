@@ -31,9 +31,6 @@ class CARTRegressor:
 
             self.train_models.update({train_index: tree})
 
-        if self.prune_tree:
-            self.prune()
-
     def branch(self, train_data, feature_names):
         feature_names = copy.deepcopy(feature_names)
 
@@ -145,18 +142,19 @@ class CARTRegressor:
         for index in range(5):
             test_data = self.test_split[index]
             tree = self.train_models[index]
-            test_result = self.regress(prediction_data=test_data, tree=tree)
+            test_result, leaf = self.regress(prediction_data=test_data, tree=tree)
 
             self.test_results.update({index: test_result})
 
     def regress(self, prediction_data, tree):
         test_result = pd.DataFrame()
+        new_leaf = pd.DataFrame()
 
         if isinstance(tree, pd.DataFrame):
             prediction = tree.iloc[:, -1].mean()
             prediction_data['Prediction'] = prediction
 
-            return prediction_data
+            return prediction_data, tree
 
         for feature_name in tree.keys():
             for partition in tree[feature_name]:
@@ -167,81 +165,36 @@ class CARTRegressor:
                     'feature_name': feature_name,
                     'partition': partition
                 }
-                new_prediction_data = filter_data(**kwargs)
+                new_prediction_data = self.filter_data(**kwargs)
 
-                new_prediction_data = self.regress(prediction_data=new_prediction_data, tree=new_tree)
+                new_prediction_data, leaf = self.regress(prediction_data=new_prediction_data, tree=new_tree)
 
                 test_result = test_result.append(new_prediction_data)
-
-        return test_result
-
-    def prune(self):
-        for index in range(5):
-            tree = self.train_models[index]
-            test_result = self.prune_branch(prediction_data=self.validation_data, tree=tree)
-
-            self.test_results.update({index: test_result})
-
-    def prune_branch(self, prediction_data, tree):
-        validation_result = pd.DataFrame()
-        new_leaf = pd.DataFrame()
-
-        if isinstance(tree, pd.DataFrame):
-            prediction = tree['Class'].mode()[0]
-            prediction_data['Prediction'] = prediction
-
-            return prediction_data, tree, tree
-
-        for feature_name in tree.keys():
-            for partition in tree[feature_name]:
-                new_tree = tree[feature_name][partition]
-
-                kwargs = {
-                    'prediction_data': prediction_data,
-                    'feature_name': feature_name,
-                    'partition': partition
-                }
-                new_prediction_data = filter_data(**kwargs)
-
-                new_prediction_data, branch, leaf = self.prune_branch(prediction_data=new_prediction_data,
-                                                                      tree=new_tree)
-
-                tree[feature_name][partition] = branch
-
-                validation_result = validation_result.append(new_prediction_data)
-
                 new_leaf = new_leaf.append(leaf)
 
-            if len(validation_result) == 0:
-                return validation_result, new_leaf, new_leaf
+            missed_validation_results = prediction_data.loc[~prediction_data.index.isin(test_result.index)]
 
-            old_misclassification = len(validation_result.loc[validation_result['Class'] !=
-                                                              validation_result['Prediction']]) / \
-                                    len(validation_result)
+            if len(missed_validation_results) > 0:
+                prediction = new_leaf.iloc[:, -1].mean()
+                missed_validation_results['Prediction'] = prediction
 
-            new_classification = new_leaf['Class'].mode()[0]
-            new_misclassification = len(validation_result.loc[validation_result['Class'] != new_classification]) / \
-                                    len(validation_result)
+                test_result = test_result.append(missed_validation_results)
 
-            if new_misclassification <= old_misclassification:
-                validation_result['Prediction'] = new_classification
+        return test_result, new_leaf
 
-                return validation_result, new_leaf, new_leaf
+    def filter_data(self, prediction_data, feature_name, partition):
+        if not self:
+            raise NotImplementedError
 
-            else:
-                return validation_result, tree, new_leaf
+        if str(partition)[0] == '<':
+            float_partition = float(partition[1:])
 
+            return pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name] <= float_partition], deep=True)
 
-def filter_data(prediction_data, feature_name, partition):
-    if str(partition)[0] == '<':
-        float_partition = float(partition[1:])
+        elif str(partition)[0] == '>':
+            float_partition = float(partition[1:])
 
-        return pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name] <= float_partition], deep=True)
+            return pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name] > float_partition], deep=True)
 
-    elif str(partition)[0] == '>':
-        float_partition = float(partition[1:])
-
-        return pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name] > float_partition], deep=True)
-
-    else:
-        return pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name] == partition], deep=True)
+        else:
+            return pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name] == partition], deep=True)

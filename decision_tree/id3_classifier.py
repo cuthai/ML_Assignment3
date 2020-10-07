@@ -237,23 +237,6 @@ class ID3Classifier:
             else:
                 return validation_result, tree, new_leaf
 
-    def filter_data(self, prediction_data, feature_name, partition):
-        if not self:
-            raise NotImplementedError
-
-        if partition[0] == '<':
-            float_partition = float(partition[1:])
-
-            return pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name] <= float_partition], deep=True)
-
-        elif partition[0] == '>':
-            float_partition = float(partition[1:])
-
-            return pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name] > float_partition], deep=True)
-
-        else:
-            return pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name] == partition], deep=True)
-
     def predict(self):
         for index in range(5):
             test_data = self.test_split[index]
@@ -298,3 +281,20 @@ class ID3Classifier:
             test_result = test_result.append(missed_validation_results)
 
         return test_result, new_leaf
+
+    def filter_data(self, prediction_data, feature_name, partition):
+        if not self:
+            raise NotImplementedError
+
+        if partition[0] == '<':
+            float_partition = float(partition[1:])
+
+            return pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name] <= float_partition], deep=True)
+
+        elif partition[0] == '>':
+            float_partition = float(partition[1:])
+
+            return pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name] > float_partition], deep=True)
+
+        else:
+            return pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name] == partition], deep=True)
