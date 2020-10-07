@@ -45,7 +45,7 @@ class ID3Classifier:
         normalizer = len(train_data)
         entropy = 0
 
-        if normalizer == 0 or len(feature_names) == 0:
+        if normalizer == 0:
             return train_data
 
         for class_name in self.class_names:

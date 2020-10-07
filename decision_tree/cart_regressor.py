@@ -3,7 +3,7 @@ import pandas as pd
 
 
 class CARTRegressor:
-    def __init__(self, etl, prune=False):
+    def __init__(self, etl):
         # Set the attributes to hold our data
         self.etl = etl
         self.data_name = self.etl.data_name
@@ -11,7 +11,9 @@ class CARTRegressor:
         self.test_split = etl.test_split
         self.train_split = etl.train_split
         self.feature_names = etl.feature_names
-        self.prune_tree = prune
+
+        # Tune Results
+        self.threshold = 0
 
         # Train Results
         self.train_models = {}
@@ -34,7 +36,7 @@ class CARTRegressor:
     def branch(self, train_data, feature_names):
         feature_names = copy.deepcopy(feature_names)
 
-        if len(train_data) == 0 or len(feature_names) == 0:
+        if len(train_data) == 0:
             return train_data
 
         min_mse = 0
