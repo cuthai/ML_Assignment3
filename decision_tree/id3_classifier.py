@@ -173,40 +173,6 @@ class ID3Classifier:
 
         return expectation, chosen_partition
 
-    def predict(self):
-        for index in range(5):
-            test_data = self.test_split[index]
-            tree = self.train_models[index]
-            test_result = self.classify(prediction_data=test_data, tree=tree)
-
-            self.test_results.update({index: test_result})
-
-    def classify(self, prediction_data, tree):
-        test_result = pd.DataFrame()
-
-        if isinstance(tree, pd.DataFrame):
-            prediction = tree['Class'].mode()[0]
-            prediction_data['Prediction'] = prediction
-
-            return prediction_data
-
-        for feature_name in tree.keys():
-            for partition in tree[feature_name]:
-                new_tree = tree[feature_name][partition]
-
-                kwargs = {
-                    'prediction_data': prediction_data,
-                    'feature_name': feature_name,
-                    'partition': partition
-                }
-                new_prediction_data = self.filter_data(**kwargs)
-
-                new_prediction_data = self.classify(prediction_data=new_prediction_data, tree=new_tree)
-
-                test_result = test_result.append(new_prediction_data)
-
-        return test_result
-
     def prune(self):
         for index in range(5):
             tree = self.train_models[index]
@@ -248,13 +214,20 @@ class ID3Classifier:
             if len(validation_result) == 0:
                 return validation_result, new_leaf, new_leaf
 
-            old_misclassification = len(validation_result.loc[validation_result['Class'] !=
-                                                              validation_result['Prediction']]) /\
-                                    len(validation_result)
-
             new_classification = new_leaf['Class'].mode()[0]
             new_misclassification = len(prediction_data.loc[prediction_data['Class'] != new_classification]) / \
                                     len(prediction_data)
+
+            missed_validation_results = \
+                pd.DataFrame.copy(prediction_data.loc[~prediction_data.index.isin(validation_result.index)], deep=True)
+            if len(missed_validation_results) > 0:
+                missed_validation_results['Prediction'] = new_classification
+
+                validation_result = validation_result.append(missed_validation_results)
+
+            old_misclassification = len(validation_result.loc[validation_result['Class'] !=
+                                                              validation_result['Prediction']]) /\
+                                    len(validation_result)
 
             if new_misclassification <= old_misclassification:
                 validation_result['Prediction'] = new_classification
@@ -280,3 +253,48 @@ class ID3Classifier:
 
         else:
             return pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name] == partition], deep=True)
+
+    def predict(self):
+        for index in range(5):
+            test_data = self.test_split[index]
+            tree = self.train_models[index]
+            test_result, leaf = self.classify(prediction_data=test_data, tree=tree)
+
+            self.test_results.update({index: test_result})
+
+    def classify(self, prediction_data, tree):
+        test_result = pd.DataFrame()
+        new_leaf = pd.DataFrame()
+
+        if isinstance(tree, pd.DataFrame):
+            prediction = tree['Class'].mode()[0]
+            prediction_data['Prediction'] = prediction
+
+            return prediction_data, tree
+
+        for feature_name in tree.keys():
+            for partition in tree[feature_name]:
+                new_tree = tree[feature_name][partition]
+
+                kwargs = {
+                    'prediction_data': prediction_data,
+                    'feature_name': feature_name,
+                    'partition': partition
+                }
+                new_prediction_data = self.filter_data(**kwargs)
+
+                new_prediction_data, leaf = self.classify(prediction_data=new_prediction_data, tree=new_tree)
+
+                test_result = test_result.append(new_prediction_data)
+                new_leaf = new_leaf.append(leaf)
+
+        new_classification = new_leaf['Class'].mode()[0]
+
+        missed_validation_results = \
+            pd.DataFrame.copy(prediction_data.loc[~prediction_data.index.isin(test_result.index)], deep=True)
+        if len(missed_validation_results) > 0:
+            missed_validation_results['Prediction'] = new_classification
+
+            test_result = test_result.append(missed_validation_results)
+
+        return test_result, new_leaf
