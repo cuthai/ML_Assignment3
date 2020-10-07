@@ -15,17 +15,23 @@ def main():
     }
     etl = ETL(**kwargs)
 
-    # Set up kwargs for KNN
-    kwargs = {
-        'etl': etl,
-        'prune': arguments.prune
-    }
     # KNN
     # Classification
     if arguments.data_name in ['breast-cancer', 'car', 'segmentation']:
+        # Set up kwargs for KNN
+        kwargs = {
+            'etl': etl,
+            'prune': arguments.prune
+        }
+
         dt_model = ID3Classifier(**kwargs)
     # Regression
     else:
+        # Set up kwargs for KNN
+        kwargs = {
+            'etl': etl
+        }
+
         dt_model = CARTRegressor(**kwargs)
 
     # Fit
