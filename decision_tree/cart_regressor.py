@@ -1,5 +1,6 @@
 import copy
 import pandas as pd
+import json
 
 
 class CARTRegressor:
@@ -16,6 +17,7 @@ class CARTRegressor:
         # Tune Results
         self.percent_threshold = percent_threshold
         self.tune_results = {}
+        self.perform_tune = False
 
         # Train Results
         self.train_models = {}
@@ -25,8 +27,10 @@ class CARTRegressor:
 
         # Summary
         self.summary = {}
+        self.tune_summary = None
 
     def tune(self):
+        self.perform_tune = True
         percent_threshold_list = [0, .01, .05, .1, .5]
         self.tune_results = {percent_threshold: {} for percent_threshold in percent_threshold_list}
 
@@ -230,6 +234,8 @@ class CARTRegressor:
             return pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name] == partition], deep=True)
 
     def summarize(self):
+        self.test_results[0].to_csv(f'output_{self.data_name}\\{self.data_name}_index_0_results.csv')
+
         average_mse = 0
         mse = 0
 
@@ -244,18 +250,29 @@ class CARTRegressor:
         average_mse = average_mse / 5
 
         self.summary = {
-            'tune': {},
             'test': {
+                'threshold': self.percent_threshold,
                 'mse': average_mse
             }
         }
 
-        for percent_threshold in self.tune_results.keys():
-            mse = 0
+        # Output JSON
+        with open(f'output_{self.data_name}\\{self.data_name}_summary.json', 'w') as file:
+            json.dump(self.summary, file)
 
-            for index in range(5):
-                mse += self.tune_results[percent_threshold][index]
+        if self.perform_tune:
+            self.tune_summary = {}
 
-            mse = mse / 5
+            for percent_threshold in self.tune_results.keys():
+                mse = 0
 
-            self.summary['tune'].update({percent_threshold: mse})
+                for index in range(5):
+                    mse += self.tune_results[percent_threshold][index]
+
+                mse = mse / 5
+
+                self.tune_summary.update({percent_threshold: mse})
+
+            # Output JSON
+            with open(f'output_{self.data_name}\\{self.data_name}_tune_summary.json', 'w') as file:
+                json.dump(self.tune_summary, file)
