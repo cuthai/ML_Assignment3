@@ -41,6 +41,9 @@ def main():
     # Predict
     dt_model.predict()
 
+    # Summarize
+    dt_model.summarize()
+
     pass
 
 

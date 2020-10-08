@@ -209,5 +209,22 @@ class CARTRegressor:
         else:
             return pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name] == partition], deep=True)
 
-    def summary(self):
-        pass
+    def summarize(self):
+        average_mse = 0
+        mse = 0
+
+        for index in range(5):
+            test_results = self.test_results[index]
+
+            mse += ((test_results.iloc[:, -2] - test_results.iloc[:, -1]) ** 2).sum()
+            mse = mse / len(test_results)
+
+            average_mse += mse
+
+        average_mse = average_mse / 5
+
+        self.summary = {
+            'test': {
+                'mse': average_mse
+            }
+        }
