@@ -15,6 +15,7 @@ class CARTRegressor:
 
         # Tune Results
         self.percent_threshold = percent_threshold
+        self.tune_results = {}
 
         # Train Results
         self.train_models = {}
@@ -25,9 +26,27 @@ class CARTRegressor:
         # Summary
         self.summary = {}
 
-    def fit(self, threshold=None):
-        if not threshold:
-            threshold = self.percent_threshold * self.squared_average_target
+    def tune(self):
+        percent_threshold_list = [0, .01, .05, .1, .5]
+        self.tune_results = {percent_threshold: {} for percent_threshold in percent_threshold_list}
+
+        for percent_threshold in percent_threshold_list:
+            self.fit(percent_threshold)
+
+            for index in range(5):
+                tune_results, tree = self.regress(self.validation_data, self.train_models[index])
+
+                mse = ((tune_results.iloc[:, -2] - tune_results.iloc[:, -1]) ** 2).sum()
+                mse = mse / len(tune_results)
+
+                self.tune_results[percent_threshold].update({
+                    index: mse
+                })
+
+    def fit(self, percent_threshold=None):
+        if not percent_threshold:
+            percent_threshold = self.percent_threshold
+        threshold = percent_threshold * self.squared_average_target
 
         for train_index in range(5):
             train_data = self.train_split[train_index]
@@ -225,7 +244,18 @@ class CARTRegressor:
         average_mse = average_mse / 5
 
         self.summary = {
+            'tune': {},
             'test': {
                 'mse': average_mse
             }
         }
+
+        for percent_threshold in self.tune_results.keys():
+            mse = 0
+
+            for index in range(5):
+                mse += self.tune_results[percent_threshold][index]
+
+            mse = mse / 5
+
+            self.summary['tune'].update({percent_threshold: mse})

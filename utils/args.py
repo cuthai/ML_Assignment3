@@ -25,6 +25,8 @@ def args():
                         help='Trigger Prune on trained decision tree')
     parser.add_argument('-pt', '--percent_threshold', default=0, type=float,
                         help='Specify percent_threshold for early stopping of tree')
+    parser.add_argument('-t', '--tune', action='store_true',
+                        help='Trigger tune on CART decision tree')
 
     # Parse arguments
     command_args = parser.parse_args()

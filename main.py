@@ -35,6 +35,9 @@ def main():
 
         dt_model = CARTRegressor(**kwargs)
 
+        if arguments.tune:
+            dt_model.tune()
+
     # Fit
     dt_model.fit()
 
