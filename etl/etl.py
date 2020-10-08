@@ -37,6 +37,7 @@ class ETL:
         self.classes = 0
         self.class_names = None
         self.feature_names = None
+        self.squared_average_target = 0
 
         # Extract
         self.extract()
@@ -225,6 +226,9 @@ class ETL:
         self.feature_names = {feature_name: 'numerical' for feature_name in temp_df.keys()[:-1]}
         self.feature_names.update({'Sex': 'categorical'})
 
+        # Squared Average Target for percent_threshold
+        self.squared_average_target = temp_df.iloc[:, -1].mean() ** 2
+
     def transform_machine(self):
         """
         Function to transform machine data set
@@ -247,6 +251,9 @@ class ETL:
         self.feature_names = {feature_name: 'numerical' for feature_name in temp_df.keys()[:-1]}
         self.feature_names.update({'Vendor': 'categorical'})
 
+        # Squared Average Target for percent_threshold
+        self.squared_average_target = temp_df.iloc[:, -1].mean() ** 2
+
     def transform_forest_fires(self):
         """
         Function to transform forest-fires data set
@@ -265,6 +272,9 @@ class ETL:
         # Feature names
         self.feature_names = {feature_name: 'numerical' for feature_name in temp_df.keys()[:-1]}
         self.feature_names.update({'month': 'categorical', 'day': 'categorical'})
+
+        # Squared Average Target for percent_threshold
+        self.squared_average_target = temp_df.iloc[:, -1].mean() ** 2
 
     def cv_split_classification(self):
         """

@@ -23,8 +23,8 @@ def args():
                         help='Specify a seed to pass to the data splitter')
     parser.add_argument('-p', '--prune', action='store_true',
                         help='Trigger Prune on trained decision tree')
-    parser.add_argument('-t', '--threshold', default=0, type=int,
-                        help='Specify threshold for early stopping of tree')
+    parser.add_argument('-pt', '--percent_threshold', default=0, type=float,
+                        help='Specify percent_threshold for early stopping of tree')
 
     # Parse arguments
     command_args = parser.parse_args()

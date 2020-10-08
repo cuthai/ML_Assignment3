@@ -3,7 +3,7 @@ import pandas as pd
 
 
 class CARTRegressor:
-    def __init__(self, etl, threshold=0):
+    def __init__(self, etl, percent_threshold=0):
         # Set the attributes to hold our data
         self.etl = etl
         self.data_name = self.etl.data_name
@@ -11,9 +11,10 @@ class CARTRegressor:
         self.test_split = etl.test_split
         self.train_split = etl.train_split
         self.feature_names = etl.feature_names
+        self.squared_average_target = etl.squared_average_target
 
         # Tune Results
-        self.threshold = threshold
+        self.percent_threshold = percent_threshold
 
         # Train Results
         self.train_models = {}
@@ -26,7 +27,7 @@ class CARTRegressor:
 
     def fit(self, threshold=None):
         if not threshold:
-            threshold = self.threshold
+            threshold = self.percent_threshold * self.squared_average_target
 
         for train_index in range(5):
             train_data = self.train_split[train_index]

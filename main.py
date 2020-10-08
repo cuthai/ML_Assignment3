@@ -30,7 +30,7 @@ def main():
         # Set up kwargs for KNN
         kwargs = {
             'etl': etl,
-            'threshold': arguments.threshold
+            'percent_threshold': arguments.percent_threshold
         }
 
         dt_model = CARTRegressor(**kwargs)
