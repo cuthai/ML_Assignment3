@@ -3,7 +3,7 @@ import pandas as pd
 
 
 class CARTRegressor:
-    def __init__(self, etl):
+    def __init__(self, etl, threshold=0):
         # Set the attributes to hold our data
         self.etl = etl
         self.data_name = self.etl.data_name
@@ -13,7 +13,7 @@ class CARTRegressor:
         self.feature_names = etl.feature_names
 
         # Tune Results
-        self.threshold = 0
+        self.threshold = threshold
 
         # Train Results
         self.train_models = {}
@@ -23,17 +23,19 @@ class CARTRegressor:
 
         # Summary
         self.summary = {}
-        self.summary_classification = None
 
-    def fit(self):
+    def fit(self, threshold=None):
+        if not threshold:
+            threshold = self.threshold
+
         for train_index in range(5):
             train_data = self.train_split[train_index]
             initial_features = list(self.feature_names.keys())
-            tree = self.branch(train_data, initial_features)
+            tree = self.branch(train_data, initial_features, threshold)
 
             self.train_models.update({train_index: tree})
 
-    def branch(self, train_data, feature_names):
+    def branch(self, train_data, feature_names, threshold):
         feature_names = copy.deepcopy(feature_names)
 
         if len(train_data) == 0:
@@ -46,6 +48,9 @@ class CARTRegressor:
         partition_prediction = train_data.iloc[:, -1].mean()
         min_mse += ((train_data.iloc[:, -1] - partition_prediction) ** 2).sum()
         min_mse = min_mse / len(train_data)
+
+        if min_mse < threshold:
+            return train_data
 
         for feature_name in feature_names:
             chosen_partition = None
@@ -70,9 +75,11 @@ class CARTRegressor:
                 tree = {
                     min_feature_name: {
                         f'<{min_partition}':
-                            self.branch(train_data=lower_new_train_data, feature_names=feature_names),
+                            self.branch(train_data=lower_new_train_data, feature_names=feature_names,
+                                        threshold=threshold),
                         f'>{min_partition}':
-                            self.branch(train_data=upper_new_train_data, feature_names=feature_names)
+                            self.branch(train_data=upper_new_train_data, feature_names=feature_names,
+                                        threshold=threshold)
                     }
                 }
 
@@ -82,7 +89,8 @@ class CARTRegressor:
 
                 for partition in min_feature_partitions:
                     new_train_data = train_data.loc[train_data[min_feature_name] == partition]
-                    next_branch = self.branch(train_data=new_train_data, feature_names=feature_names)
+                    next_branch = self.branch(train_data=new_train_data, feature_names=feature_names,
+                                              threshold=threshold)
 
                     tree[min_feature_name].update({partition: next_branch})
 
@@ -200,3 +208,6 @@ class CARTRegressor:
 
         else:
             return pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name] == partition], deep=True)
+
+    def summary(self):
+        pass
