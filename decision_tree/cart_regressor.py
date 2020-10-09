@@ -234,18 +234,25 @@ class CARTRegressor:
             return pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name] == partition], deep=True)
 
     def summarize(self):
-        self.test_results[0].to_csv(f'output_{self.data_name}\\{self.data_name}_index_0_results.csv')
+        if self.percent_threshold > 0:
+            stopped_file_name = 'stopped_'
+        else:
+            stopped_file_name = 'full_'
 
+        all_test_results = pd.DataFrame()
         average_mse = 0
         mse = 0
 
         for index in range(5):
             test_results = self.test_results[index]
+            all_test_results = all_test_results.append(test_results)
 
             mse += ((test_results.iloc[:, -2] - test_results.iloc[:, -1]) ** 2).sum()
             mse = mse / len(test_results)
 
             average_mse += mse
+
+        all_test_results.to_csv(f'output_{self.data_name}\\{self.data_name}_{stopped_file_name}test_results.csv')
 
         average_mse = average_mse / 5
 
@@ -257,7 +264,7 @@ class CARTRegressor:
         }
 
         # Output JSON
-        with open(f'output_{self.data_name}\\{self.data_name}_summary.json', 'w') as file:
+        with open(f'output_{self.data_name}\\{self.data_name}_{stopped_file_name}summary.json', 'w') as file:
             json.dump(self.summary, file)
 
         if self.perform_tune:

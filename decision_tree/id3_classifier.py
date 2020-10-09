@@ -1,6 +1,7 @@
 import math
 import copy
 import pandas as pd
+import json
 
 
 class ID3Classifier:
@@ -298,3 +299,33 @@ class ID3Classifier:
 
         else:
             return pd.DataFrame.copy(prediction_data.loc[prediction_data[feature_name] == partition], deep=True)
+
+    def summarize(self):
+        if self.prune_tree:
+            prune_file_name = 'pruned_'
+        else:
+            prune_file_name = ''
+
+        all_test_results = pd.DataFrame()
+        misclassification = 0
+
+        for index in range(5):
+            test_results = self.test_results[index]
+            all_test_results = all_test_results.append(test_results)
+
+            misclassification += len(test_results.loc[test_results['Class'] != test_results['Prediction']]) /\
+                                len(test_results)
+
+        all_test_results.to_csv(f'output_{self.data_name}\\{self.data_name}_{prune_file_name}test_results.csv')
+
+        misclassification = misclassification / 5
+
+        self.summary = {
+            'test': {
+                'misclassification': misclassification
+            }
+        }
+
+        # Output JSON
+        with open(f'output_{self.data_name}\\{self.data_name}_{prune_file_name}summary.json', 'w') as file:
+            json.dump(self.summary, file)

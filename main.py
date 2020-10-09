@@ -47,8 +47,6 @@ def main():
     # Summarize
     dt_model.summarize()
 
-    pass
-
 
 if __name__ == '__main__':
     main()
