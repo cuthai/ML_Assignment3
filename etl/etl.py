@@ -16,9 +16,9 @@ class ETL:
         All data comes from the data folder. The init function calls to both extract and transform for processing
 
         :param data_name: str, name of the data file passed at the command line. Below are the valid names:
-            glass
+            breast-cancer
+            car
             segmentation
-            vote
             abalone
             machine (assignment name: computer hardware)
             forest-fires
@@ -51,6 +51,7 @@ class ETL:
         else:
             self.cv_split_classification()
 
+        # Combine Train Sets
         self.cv_combine()
 
     def extract(self):
@@ -96,8 +97,8 @@ class ETL:
 
         # If an incorrect data_name was specified we'll raise an error here
         else:
-            raise NameError('Please specify a predefined name for one of the 6 data sets (glass, segmentation, vote,'
-                            'abalone, machine, forest-fires)')
+            raise NameError('Please specify a predefined name for one of the 6 data sets (breast-cancer, car,'
+                            'segmentation, abalone, machine, forest-fires)')
 
     def transform(self):
         """
@@ -138,7 +139,7 @@ class ETL:
         """
         Function to transform breast-cancer data set
 
-        For this function all numeric data is normalized using mean/standard deviation
+        For this function missing data points are removed
 
         :return self.transformed_data: DataFrame, transformed data set
         :return self.classes: int, num of classes
@@ -154,11 +155,11 @@ class ETL:
         # We don't need ID so let's drop that
         temp_df.drop(columns='ID', inplace=True)
 
-        # Set attributes for ETL object, there are 6 total classes so this is a multi classifier
+        # Set attributes for ETL object
         self.classes = 2
         self.transformed_data = temp_df
 
-        # Class and Feature names
+        # Class and Feature name/type
         self.class_names = temp_df['Class'].unique().tolist()
         self.feature_names = {feature_name: 'numerical' for feature_name in temp_df.keys()[:-1]}
 
@@ -166,17 +167,19 @@ class ETL:
         """
         Function to transform car data set
 
+        No major transformations are made for car
+
         :return self.transformed_data: DataFrame, transformed data set
         :return self.classes: int, num of classes
         """
         # We'll make a deep copy of our data set
         temp_df = pd.DataFrame.copy(self.data, deep=True)
 
-        # Set attributes for ETL object, there are two total classes so this is a singular classifier
+        # Set attributes for ETL object
         self.classes = 4
         self.transformed_data = temp_df
 
-        # Class and Feature names
+        # Class and Feature name/type
         self.class_names = temp_df['Class'].unique().tolist()
         self.feature_names = {feature_name: 'categorical' for feature_name in temp_df.keys()[:-1]}
 
@@ -184,7 +187,7 @@ class ETL:
         """
         Function to transform segmentation data set
 
-        For this function all numeric data is normalized using mean/standard deviation
+        No major transformations are done for segmentation, the target class variable is ordered to the end
 
         :return self.transformed_data: DataFrame, transformed data set
         :return self.classes: int, num of classes
@@ -199,11 +202,11 @@ class ETL:
         reordered_temp_df = temp_df.drop(columns='Class')
         reordered_temp_df['Class'] = temp_df['Class']
 
-        # Set attributes for ETL object, there are two total classes so this is a singular classifier
+        # Set attributes for ETL object
         self.classes = 7
         self.transformed_data = reordered_temp_df
 
-        # Class and Feature names
+        # Class and Feature name/type
         self.class_names = reordered_temp_df['Class'].unique().tolist()
         self.feature_names = {feature_name: 'numerical' for feature_name in reordered_temp_df.keys()[:-1]}
 
@@ -211,7 +214,7 @@ class ETL:
         """
         Function to transform abalone data set
 
-        For this function all numeric data is normalized using mean/standard deviation
+        No major transformations are done on this data set. The target variable is squared for percent threshold tuning
 
         :return self.transformed_data: DataFrame, transformed data set
         :return self.classes: int, num of classes
@@ -219,10 +222,10 @@ class ETL:
         # We'll make a deep copy of our data set
         temp_df = pd.DataFrame.copy(self.data, deep=True)
 
-        # Set attributes for ETL object, there are two total classes so this is a singular classifier
+        # Set attributes for ETL object
         self.transformed_data = temp_df
 
-        # Feature names
+        # Feature name/type
         self.feature_names = {feature_name: 'numerical' for feature_name in temp_df.keys()[:-1]}
         self.feature_names.update({'Sex': 'categorical'})
 
@@ -233,7 +236,8 @@ class ETL:
         """
         Function to transform machine data set
 
-        For this function all numeric data is normalized using mean/standard deviation
+        No major transformations are done on this data set, model_name is a unique ID and is removed. The target
+            variable is squared for percent threshold tuning
 
         :return self.transformed_data: DataFrame, transformed data set
         :return self.classes: int, num of classes
@@ -244,10 +248,10 @@ class ETL:
         # We'll remove unneeded variables as well as denormalize the target
         temp_df.drop(columns=['Model_Name', 'ERP'], inplace=True)
 
-        # Set attributes for ETL object, there are two total classes so this is a singular classifier
+        # Set attributes for ETL object
         self.transformed_data = temp_df
 
-        # Feature names
+        # Feature name/type
         self.feature_names = {feature_name: 'numerical' for feature_name in temp_df.keys()[:-1]}
         self.feature_names.update({'Vendor': 'categorical'})
 
@@ -258,7 +262,7 @@ class ETL:
         """
         Function to transform forest-fires data set
 
-        For this function all numeric data is normalized using mean/standard deviation
+        No major transformations are done on this data set. The target variable is squared for percent threshold tuning
 
         :return self.transformed_data: DataFrame, transformed data set
         :return self.classes: int, num of classes
@@ -266,10 +270,10 @@ class ETL:
         # We'll make a deep copy of our data set
         temp_df = pd.DataFrame.copy(self.data, deep=True)
 
-        # Set attributes for ETL object, there are two total classes so this is a singular classifier
+        # Set attributes for ETL object
         self.transformed_data = temp_df
 
-        # Feature names
+        # Feature name/type
         self.feature_names = {feature_name: 'numerical' for feature_name in temp_df.keys()[:-1]}
         self.feature_names.update({'month': 'categorical', 'day': 'categorical'})
 
@@ -280,9 +284,9 @@ class ETL:
         """
         Function to split our transformed data into 10% validation and 5 cross validation splits for classification
 
-        First this function randomizes a number between one and 10 to split out a validation set. After a number is randomized
-            and the data is sorted over the class and random number. The index of the data is then mod by 5 and each
-            remainder represents a set for cv splitting.
+        First this function randomizes a number between one and 10 to split out a validation set. After a number is
+            randomized and the data is sorted over the class and random number. The index of the data is then mod by 5
+            and each remainder represents a set for cv splitting.
 
         :return self.test_split: dict (of DataFrames), dictionary with keys (validation, 0, 1, 2, 3, 4) referring to the
             split transformed data
@@ -373,10 +377,10 @@ class ETL:
 
     def cv_combine(self):
         """
-        Fit function
+        Function to combine the CV splits
 
-        This function doesn't actually do any fitting, it just specifies the train data for each CV split index. This
-            combines the CV splits for each index. Ex: for split 0 CV 1-4 are combined and train_data 0 is set to CV 1-4
+        For each of the 5 CV splits, this function combines the other 4 splits and assigns it the same index as the
+            left out split. This combined split is labeled as the train data set
         """
         # Loop through index
         for index in range(5):
