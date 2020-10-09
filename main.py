@@ -5,6 +5,9 @@ from decision_tree.cart_regressor import CARTRegressor
 
 
 def main():
+    """
+    Main function to run Decision Tree Classifier/Regressor
+    """
     # Parse arguments
     arguments = args()
 
@@ -15,10 +18,10 @@ def main():
     }
     etl = ETL(**kwargs)
 
-    # KNN
+    # Decision Tree
     # Classification
     if arguments.data_name in ['breast-cancer', 'car', 'segmentation']:
-        # Set up kwargs for KNN
+        # Set up kwargs
         kwargs = {
             'etl': etl,
             'prune': arguments.prune
@@ -27,7 +30,7 @@ def main():
         dt_model = ID3Classifier(**kwargs)
     # Regression
     else:
-        # Set up kwargs for KNN
+        # Set up kwargs
         kwargs = {
             'etl': etl,
             'percent_threshold': arguments.percent_threshold
@@ -35,6 +38,7 @@ def main():
 
         dt_model = CARTRegressor(**kwargs)
 
+        # Tune
         if arguments.tune:
             dt_model.tune()
 

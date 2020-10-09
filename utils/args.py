@@ -7,12 +7,13 @@ def args():
 
     Arguments:
         -dn <str> (data_name) name of the data to import form the data folder
-            they are: breast-cancer, glass, iris, soybean, vote
+            they are: breast-cancer, car, segmentation, abalone, machine, forest-fires
         -rs <int> (random_seed) seed used for data split. Defaults to 1. All submitted output uses random_seed 1
-        -kt <str> (knn_type) Define one of the specialized KNN functions. Can be edited or condensed. Default to regular
-        -k <int> (k) K to replace tune function
-        -s <float> (sigma) Sigma to replace tune function
-        -e <float> (epsilon) Epsilon to replace tune function
+        -p (prune) Trigger prune for classification tree. Does nothing for regressor
+        -t (tune) Trigger tune for regression tree. Does nothing for classifier. This does not set thresholds, only
+            output tune results
+        -pt <float> (percent_threshold) Add a specific percentage threshold for early stopping on regressor. Does
+            nothing for classifier
     """
     # Initialize the parser
     parser = argparse.ArgumentParser()
@@ -23,10 +24,10 @@ def args():
                         help='Specify a seed to pass to the data splitter')
     parser.add_argument('-p', '--prune', action='store_true',
                         help='Trigger Prune on trained decision tree')
-    parser.add_argument('-pt', '--percent_threshold', default=0, type=float,
-                        help='Specify percent_threshold for early stopping of tree')
     parser.add_argument('-t', '--tune', action='store_true',
                         help='Trigger tune on CART decision tree')
+    parser.add_argument('-pt', '--percent_threshold', default=0, type=float,
+                        help='Specify percent_threshold for early stopping of tree')
 
     # Parse arguments
     command_args = parser.parse_args()
